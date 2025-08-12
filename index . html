@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>متجر العطور</title>
+<style>
+  body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:#f5f5f5; margin:0; padding:0;}
+  header { background:#222; color:#fff; padding:1rem; text-align:center; font-size:1.5rem; }
+  main { padding:1rem; max-width:1200px; margin: auto; }
+  .filters { margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;}
+  select, input[type="search"] {
+    padding: 0.5rem; font-size: 1rem; border-radius: 5px; border:1px solid #ccc; min-width:150px;
+  }
+  #productsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(150px,1fr));
+    gap: 1rem;
+  }
+  .product-card {
+    background:#fff;
+    padding:1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgb(0 0 0 / 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 220px;
+  }
+  .product-img {
+    width: 100%;
+    height: 100px;
+    background: #ddd;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    display: flex; align-items:center; justify-content:center; color:#999; font-size:0.9rem;
+  }
+  .product-name { font-weight: bold; margin-bottom: 0.2rem; font-size:1rem; }
+  .product-price { color:#2a9d8f; font-weight: bold; margin-bottom: 0.5rem; }
+  .product-composition { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; min-height: 30px; }
+  button.buy-btn {
+    background:#264653; color:#fff; border:none; padding:0.5rem; border-radius:5px; cursor:pointer;
+    transition: background 0.3s ease;
+  }
+  button.buy-btn:hover {
+    background:#2a9d8f;
+  }
+  #paypal-button-container {
+    margin-top: 1rem;
+    text-align: center;
+  }
+</style>
+<script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
+</head>
+<body>
+<header>متجر العطور</header>
+<main>
+  <div class="filters">
+    <input type="search" id="searchInput" placeholder="ابحث عن العطر..." aria-label="بحث عن العطر" />
+    <select id="categoryFilter" aria-label="تصفية الفئة">
+      <option value="">كل الفئات</option>
+      <option value="زهري">زهري</option>
+      <option value="خشبي">خشبي</option>
+      <option value="فواكه">فواكه</option>
+      <option value="شرقي">شرقي</option>
+      <option value="عطري">عطري</option>
+    </select>
+    <select id="priceFilter" aria-label="تصفية السعر">
+      <option value="">كل الأسعار</option>
+      <option value="0-50">0 - 50</option>
+      <option value="51-100">51 - 100</option>
+      <option value="101-200">101 - 200</option>
+      <option value="201-9999">201+</option>
+    </select>
+    <select id="compositionFilter" aria-label="تصفية التركيبة">
+      <option value="">كل التركيبات</option>
+      <option value="خفيف">خفيف</option>
+      <option value="متوسط">متوسط</option>
+      <option value="قوي">قوي</option>
+    </select>
+  </div>
+
+  <div id="productsGrid"></div>
+
+  <div id="paypal-button-container"></div>
+</main>
+
+<script>
+  // مصفوفة المنتجات - عدل البيانات هنا بنفسك (اسم، سعر، فئة، تركيبة، وصورة)
+  const products = [];
+  const categories = ["زهري", "خشبي", "فواكه", "شرقي", "عطري"];
+  const compositions = ["خفيف", "متوسط", "قوي"];
+
+  // إنشاء 100 منتج فارغ يمكن تعديله
+  for(let i=1; i<=100; i++) {
+    products.push({
+      id: i,
+      name: `اسم العطر ${i}`,       // عدل الاسم هنا
+      price: 50 + i,                // عدل السعر هنا
+      category: categories[i % categories.length],
+      composition: compositions[i % compositions.length],
+      image: "",                    // هنا رابط الصورة (ضع رابط أو اترك فارغ)
+    });
+  }
+
+  const productsGrid = document.getElementById('productsGrid');
+  const searchInput = document.getElementById('searchInput');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const priceFilter = document.getElementById('priceFilter');
+  const compositionFilter = document.getElementById('compositionFilter');
+
+  function renderProducts(filteredProducts) {
+    productsGrid.innerHTML = '';
+    if(filteredProducts.length === 0) {
+      productsGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#777;">لا توجد نتائج</p>';
+      return;
+    }
+    filteredProducts.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+      card.innerHTML = `
+        <div class="product-img">${p.image ? `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;border-radius:10px;">` : 'صورة هنا'}</div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-price">${p.price} ر.س</div>
+        <div class="product-composition">التركيبة: ${p.composition}</div>
+        <button class="buy-btn" onclick="buyProduct(${p.id})">اشترِ الآن</button>
+      `;
+      productsGrid.appendChild(card);
+    });
+  }
+
+  function filterProducts() {
+    const searchTerm = searchInput.value.trim().toLowerCase();
+    const catVal = categoryFilter.value;
+    const priceVal = priceFilter.value;
+    const compVal = compositionFilter.value;
+
+    let filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm));
+
+    if(catVal) filtered = filtered.filter(p => p.category === catVal);
+    if(priceVal) {
+      const [minP, maxP] = priceVal.split('-').map(Number);
+      filtered = filtered.filter(p => p.price >= minP && p.price <= maxP);
+    }
+    if(compVal) filtered = filtered.filter(p => p.composition === compVal);
+
+    renderProducts(filtered);
+  }
+
+  searchInput.addEventListener('input', filterProducts);
+  categoryFilter.addEventListener('change', filterProducts);
+  priceFilter.addEventListener('change', filterProducts);
+  compositionFilter.addEventListener('change', filterProducts);
+
+  renderProducts(products);
+
+  // الدفع باستخدام PayPal Sandbox (تجريبي)
+  function buyProduct(productId) {
+    const product = products.find(p => p.id === productId);
+    if(!product) return alert('المنتج غير موجود');
+
+    // مسح أي أزرار موجودة قبلًا (لتجنب التكرار)
+    document.getElementById('paypal-button-container').innerHTML = '';
+
+    paypal.Buttons({
+      createOrder: function(data, actions) {
+        return actions.order.create({
+          purchase_units: [{
+            amount: {
+              value: product.price.toString()
+            },
+            description: product.name
+          }]
+        });
+      },
+      onApprove: function(data, actions) {
+        return actions.order.capture().then(function(details) {
+          alert('تم الدفع بنجاح! شكراً لك ' + details.payer.name.given_name);
+        });
+      },
+      onError: function(err) {
+        alert('حدث خطأ أثناء الدفع.');
+        console.error(err);
+      }
+    }).render('#paypal-button-container');
+
+    // تمرير الشاشة لزر الدفع  
+    document.getElementById('paypal-button-container').scrollIntoView({behavior: 'smooth'});
+  }
+</script>
+
+</body>
+</html>
